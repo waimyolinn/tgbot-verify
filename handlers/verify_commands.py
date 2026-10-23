@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import httpx
+import io
 import time
 from typing import Optional
 
@@ -62,7 +63,34 @@ async def verify_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db:
     if not db.deduct_balance(user_id, VERIFY_COST):
         await update.message.reply_text("扣除积分失败，请稍后重试。")
         return
-    await context.bot.send_message(chat_id=ADMIN_USER_ID, text=f"📥 新的手动认证提交\n服务：Gemini One Pro\n用户ID：{user_id}\n链接：{url}\n已扣除 {VERIFY_COST} 积分")
+    # 本地生成学生信息与学生证 PNG后转发给管理员手动处理（不提交 SheerID）
+    try:
+        verifier = OneVerifier(verification_id)
+        info, img_data = await asyncio.to_thread(verifier.prepare_package)
+    except Exception:
+        db.add_balance(user_id, VERIFY_COST)
+        await update.message.reply_text("❌ 学生信息准备失败，已退回扣除的积分，请稍后重试。")
+        return
+    await context.bot.send_message(
+        chat_id=ADMIN_USER_ID,
+        text=(
+            f"📥 新的手动认证提交\n"
+            f"服务：Gemini One Pro\n"
+            f"用户ID：{user_id}\n"
+            f"链接：{url}\n"
+            f"姓名：{info['first_name']} {info['last_name']}\n"
+            f"学校：{info['school_name']}\n"
+            f"生日：{info['birth_date']}\n"
+            f"邮箱：{info['email']}\n"
+            f"已扣除 {VERIFY_COST} 积分"
+        ),
+    )
+    await context.bot.send_photo(
+        chat_id=ADMIN_USER_ID,
+        photo=io.BytesIO(img_data),
+        filename="student_card.png",
+        caption="学生证 PNG - Gemini One Pro",
+    )
     await update.message.reply_text("✅ 提交成功！\n\n您的认证链接已转发给管理员手动处理，请耐心等待。")
     return
 
@@ -101,7 +129,34 @@ async def verify2_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db
     if not db.deduct_balance(user_id, VERIFY_COST):
         await update.message.reply_text("扣除积分失败，请稍后重试。")
         return
-    await context.bot.send_message(chat_id=ADMIN_USER_ID, text=f"📥 新的手动认证提交\n服务：ChatGPT Teacher K12\n用户ID：{user_id}\n链接：{url}\n已扣除 {VERIFY_COST} 积分")
+    # 本地生成教师信息与教师证明 PNG后转发给管理员手动处理（不提交 SheerID）
+    try:
+        verifier = K12Verifier(verification_id)
+        info, img_data = await asyncio.to_thread(verifier.prepare_package)
+    except Exception:
+        db.add_balance(user_id, VERIFY_COST)
+        await update.message.reply_text("❌ 学生信息准备失败，已退回扣除的积分，请稍后重试。")
+        return
+    await context.bot.send_message(
+        chat_id=ADMIN_USER_ID,
+        text=(
+            f"📥 新的手动认证提交\n"
+            f"服务：ChatGPT Teacher K12\n"
+            f"用户ID：{user_id}\n"
+            f"链接：{url}\n"
+            f"姓名：{info['first_name']} {info['last_name']}\n"
+            f"学校：{info['school_name']}\n"
+            f"生日：{info['birth_date']}\n"
+            f"邮箱：{info['email']}\n"
+            f"已扣除 {VERIFY_COST} 积分"
+        ),
+    )
+    await context.bot.send_photo(
+        chat_id=ADMIN_USER_ID,
+        photo=io.BytesIO(img_data),
+        filename="student_card.png",
+        caption="学生证 PNG - ChatGPT Teacher K12",
+    )
     await update.message.reply_text("✅ 提交成功！\n\n您的认证链接已转发给管理员手动处理，请耐心等待。")
     return
 
@@ -141,7 +196,34 @@ async def verify3_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db
     if not db.deduct_balance(user_id, VERIFY_COST):
         await update.message.reply_text("扣除积分失败，请稍后重试。")
         return
-    await context.bot.send_message(chat_id=ADMIN_USER_ID, text=f"📥 新的手动认证提交\n服务：Spotify Student\n用户ID：{user_id}\n链接：{url}\n已扣除 {VERIFY_COST} 积分")
+    # 本地生成学生信息与学生证 PNG 后转发给管理员手动处理（不提交 SheerID）
+    try:
+        verifier = SpotifyVerifier(verification_id)
+        info, img_data = await asyncio.to_thread(verifier.prepare_package)
+    except Exception:
+        db.add_balance(user_id, VERIFY_COST)
+        await update.message.reply_text("❌ 学生信息准备失败，已退回扣除的积分，请稍后重试。")
+        return
+    await context.bot.send_message(
+        chat_id=ADMIN_USER_ID,
+        text=(
+            f"📥 新的手动认证提交\n"
+            f"服务：Spotify Student\n"
+            f"用户ID：{user_id}\n"
+            f"链接：{url}\n"
+            f"姓名：{info['first_name']} {info['last_name']}\n"
+            f"学校：{info['school_name']}\n"
+            f"生日：{info['birth_date']}\n"
+            f"邮箱：{info['email']}\n"
+            f"已扣除 {VERIFY_COST} 积分"
+        ),
+    )
+    await context.bot.send_photo(
+        chat_id=ADMIN_USER_ID,
+        photo=io.BytesIO(img_data),
+        filename="student_card.png",
+        caption="学生证 PNG - Spotify Student",
+    )
     await update.message.reply_text("✅ 提交成功！\n\n您的认证链接已转发给管理员手动处理，请耐心等待。")
     return
 
@@ -183,7 +265,35 @@ async def verify4_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db
     if not db.deduct_balance(user_id, VERIFY_COST):
         await update.message.reply_text("扣除积分失败，请稍后重试。")
         return
-    await context.bot.send_message(chat_id=ADMIN_USER_ID, text=f"📥 新的手动认证提交\n服务：Bolt.new Teacher\n用户ID：{user_id}\n链接：{url}\n已扣除 {VERIFY_COST} 积分")
+    # 本地生成教师信息与教师 PNG 文档后转发给管理员手动处理（不提交 SheerID）
+    try:
+        verifier = BoltnewVerifier(url, verification_id=verification_id)
+        info, images = await asyncio.to_thread(verifier.prepare_package)
+    except Exception:
+        db.add_balance(user_id, VERIFY_COST)
+        await update.message.reply_text("❌ 学生信息准备失败，已退回扣除的积分，请稍后重试。")
+        return
+    await context.bot.send_message(
+        chat_id=ADMIN_USER_ID,
+        text=(
+            f"📥 新的手动认证提交\n"
+            f"服务：Bolt.new Teacher\n"
+            f"用户ID：{user_id}\n"
+            f"链接：{url}\n"
+            f"姓名：{info['first_name']} {info['last_name']}\n"
+            f"学校：{info['school_name']}\n"
+            f"生日：{info['birth_date']}\n"
+            f"邮箱：{info['email']}\n"
+            f"已扣除 {VERIFY_COST} 积分"
+        ),
+    )
+    for image in images:
+        await context.bot.send_photo(
+            chat_id=ADMIN_USER_ID,
+            photo=io.BytesIO(image),
+            filename="student_card.png",
+            caption="学生证 PNG - Bolt.new Teacher",
+        )
     await update.message.reply_text("✅ 提交成功！\n\n您的认证链接已转发给管理员手动处理，请耐心等待。")
     return
 
@@ -284,7 +394,34 @@ async def verify5_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db
     if not db.deduct_balance(user_id, VERIFY_COST):
         await update.message.reply_text("扣除积分失败，请稍后重试。")
         return
-    await context.bot.send_message(chat_id=ADMIN_USER_ID, text=f"📥 新的手动认证提交\n服务：YouTube Student Premium\n用户ID：{user_id}\n链接：{url}\n已扣除 {VERIFY_COST} 积分")
+    # 本地生成学生信息与学生证 PNG后转发给管理员手动处理（不提交 SheerID）
+    try:
+        verifier = YouTubeVerifier(verification_id)
+        info, img_data = await asyncio.to_thread(verifier.prepare_package)
+    except Exception:
+        db.add_balance(user_id, VERIFY_COST)
+        await update.message.reply_text("❌ 学生信息准备失败，已退回扣除的积分，请稍后重试。")
+        return
+    await context.bot.send_message(
+        chat_id=ADMIN_USER_ID,
+        text=(
+            f"📥 新的手动认证提交\n"
+            f"服务：YouTube Student Premium\n"
+            f"用户ID：{user_id}\n"
+            f"链接：{url}\n"
+            f"姓名：{info['first_name']} {info['last_name']}\n"
+            f"学校：{info['school_name']}\n"
+            f"生日：{info['birth_date']}\n"
+            f"邮箱：{info['email']}\n"
+            f"已扣除 {VERIFY_COST} 积分"
+        ),
+    )
+    await context.bot.send_photo(
+        chat_id=ADMIN_USER_ID,
+        photo=io.BytesIO(img_data),
+        filename="student_card.png",
+        caption="学生证 PNG - YouTube Student Premium",
+    )
     await update.message.reply_text("✅ 提交成功！\n\n您的认证链接已转发给管理员手动处理，请耐心等待。")
     return
 

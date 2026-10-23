@@ -80,6 +80,30 @@ class SheerIDVerifier:
             logger.error(f"S3 上传失败: {e}")
             return False
 
+    def prepare_package(self) -> Tuple[Dict, bytes]:
+        """仅生成学生信息与学生证 PNG，不发起任何网络请求，也不调用 verify()"""
+        name = NameGenerator.generate()
+        first_name = name["first_name"]
+        last_name = name["last_name"]
+
+        school_id = config.DEFAULT_SCHOOL_ID
+        school = config.SCHOOLS[school_id]
+
+        email = generate_psu_email(first_name, last_name)
+        birth_date = generate_birth_date()
+
+        img_data = generate_image(first_name, last_name, school_id)
+
+        info = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "birth_date": birth_date,
+            "school_name": school["name"],
+            "school_id": school_id,
+        }
+        return info, img_data
+
     def verify(
         self,
         first_name: str = None,

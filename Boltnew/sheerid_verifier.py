@@ -3,7 +3,7 @@ import re
 import random
 import logging
 import httpx
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import config
 from .name_generator import NameGenerator, generate_birth_date
@@ -100,6 +100,31 @@ class SheerIDVerifier:
         except Exception as e:
             logger.error(f"S3 上传失败: {e}")
             return False
+
+    def prepare_package(self) -> Tuple[Dict, List[bytes]]:
+        """仅生成教师信息与教师 PNG 文档，不发起任何网络请求，也不调用 verify()"""
+        name = NameGenerator.generate()
+        first_name = name["first_name"]
+        last_name = name["last_name"]
+
+        school_id = config.DEFAULT_SCHOOL_ID
+        school = config.SCHOOLS[school_id]
+
+        email = generate_psu_email(first_name, last_name)
+        birth_date = generate_birth_date()
+
+        assets = generate_images(first_name, last_name, school_id)
+        images = [asset["data"] for asset in assets]
+
+        info = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "birth_date": birth_date,
+            "school_name": school["name"],
+            "school_id": school_id,
+        }
+        return info, images
 
     def verify(
         self,
