@@ -18,6 +18,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def generate_school_email(first_name: str, last_name: str, domain: str) -> str:
+    """Email format: first.last + 3-4 random digits @domain (matches chosen school)"""
+    digit_count = random.choice([3, 4])
+    digits = "".join(str(random.randint(0, 9)) for _ in range(digit_count))
+    return f"{first_name.lower()}.{last_name.lower()}{digits}@{domain.lower()}"
+
+
 class SheerIDVerifier:
     """SheerID 学生身份验证器"""
 
@@ -86,10 +93,10 @@ class SheerIDVerifier:
         first_name = name["first_name"]
         last_name = name["last_name"]
 
-        school_id = config.DEFAULT_SCHOOL_ID
+        school_id = random.choice(list(config.SCHOOLS.keys()))
         school = config.SCHOOLS[school_id]
 
-        email = generate_psu_email(first_name, last_name)
+        email = generate_school_email(first_name, last_name, school["domain"])
         birth_date = generate_birth_date()
 
         img_data = generate_image(first_name, last_name, school_id)
@@ -121,11 +128,11 @@ class SheerIDVerifier:
                 first_name = name["first_name"]
                 last_name = name["last_name"]
 
-            school_id = school_id or config.DEFAULT_SCHOOL_ID
+            school_id = school_id or random.choice(list(config.SCHOOLS.keys()))
             school = config.SCHOOLS[school_id]
 
             if not email:
-                email = generate_psu_email(first_name, last_name)
+                email = generate_school_email(first_name, last_name, school["domain"])
             if not birth_date:
                 birth_date = generate_birth_date()
 
