@@ -501,3 +501,67 @@ async def getV4Code_command(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             f"❌ 查询过程中出现错误：{str(e)}\n\n"
             "请稍后重试或联系管理员。"
         )
+
+async def verify6_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db: Database):
+    """Handle /verify6 - Osun State University, step-1 offline only.
+
+    No SheerID verify() call, no captcha, no docUpload, and no
+    PNG or document is generated. The step-1 info is replied to
+    the user, so the user can do step 2 themselves, offline.
+    The osun import is local so no existing line above is changed.
+    """
+    from osun.step1 import parse_verification_id as osun_parse_verification_id
+    from osun.step1 import prepare_package as osun_prepare_package
+    user_id = update.effective_user.id
+    if db.is_user_blocked(user_id):
+        await update.message.reply_text("You are blocked and cannot use this feature.")
+        return
+    if not db.user_exists(user_id):
+        await update.message.reply_text("Please use /start to register first.")
+        return
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: /verify6 <SheerID link> <your Gmail address>\n\n"
+            "Example: /verify6 https://services.sheerid.com/verify/?verificationId=... yourname@gmail.com\n\n"
+            "Step 1 only, offline test: no SheerID submission is made."
+        )
+        return
+    url = context.args[0]
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "Please send your Gmail address with the link, for example:\n"
+            f"/verify6 {url} yourname@gmail.com\n\n"
+            "No credit has been deducted yet. Step 1 only, offline test: no SheerID submission is made."
+        )
+        return
+    gmail = context.args[1].strip().lower()
+    if gmail.count("@") != 1 or not gmail.endswith("@gmail.com") or gmail == "@gmail.com":
+        await update.message.reply_text("Please provide a valid Gmail address ending in @gmail.com.")
+        return
+    user = db.get_user(user_id)
+    if user["balance"] < VERIFY_COST:
+        await update.message.reply_text(get_insufficient_balance_message(user["balance"]))
+        return
+    if not osun_parse_verification_id(url):
+        await update.message.reply_text("Invalid SheerID link, please check and try again.")
+        return
+    if not db.deduct_balance(user_id, VERIFY_COST):
+        await update.message.reply_text("Credit deduction failed, please try again later.")
+        return
+    try:
+        info = await asyncio.to_thread(osun_prepare_package, gmail=gmail, sheerid_url=url)
+    except Exception:
+        db.add_balance(user_id, VERIFY_COST)
+        await update.message.reply_text("Step-1 info preparation failed, your credit has been refunded. Please try again later.")
+        return
+    await update.message.reply_text(
+        "Step 1 only (offline test) - Osun State University\n\n"
+        f"Name: {info['first_name']} {info['last_name']}\n"
+        f"Birth date: {info['birth_date']}\n"
+        f"School: {info['school_name']}, {info['school_city']}, {info['school_state']}\n"
+        f"Gmail: {info['email']}\n"
+        f"SheerID link: {info['sheerid_url']}\n\n"
+        "No SheerID submission was made, and no document or schedule PNG was generated. "
+        "Use the name above for step 2 yourself, offline."
+    )
+    return
